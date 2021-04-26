@@ -1,0 +1,13 @@
+{
+  "groupId": "${project.groupId}",
+  "artifactId": "${project.artifactId}",
+  "version": "${project.version}",
+  "timestamp": "${timestamp}",
+  "gitCommit": "${git.commit.id}",
+  "gitBranch": "${git.branch}",
+  "gitRepo": "${git.remote.origin.url}",
+  "buildTag": "${env.BUILD_TAG}",
+  "buildNumber": "${env.BUILD_NUMBER}",
+  "buildId": "${env.BUILD_ID}",
+  "populateRepoVersion": "1.1.31-25.jar"
+}

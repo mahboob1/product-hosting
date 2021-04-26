@@ -1,0 +1,17 @@
+FROM docker.artifactory.a.intuit.com/billingcomm/billing/qbes-hosting/service/qbes-hosting:cocoon AS cocoon
+FROM docker.intuit.com/oicp/standard/maven/amzn-maven-corretto8:1.0.0 AS build
+COPY --from=cocoon /root/.m2 /root/.m2
+
+# USER root needed for build, since CPD does not allow root user for gold images.
+# intermediate containers will be discarded at final stage, runtime image will be executed with non root user
+USER root
+# Get ARG for sonar
+ARG sonar
+
+# Copy sonar script & bundle
+COPY sonar-analysis.sh /sonar-analysis.sh
+COPY bundle /usr/src/bundle
+
+# Run Code Analysis
+WORKDIR /usr/src/bundle
+RUN bash -x /sonar-analysis.sh

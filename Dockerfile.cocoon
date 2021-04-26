@@ -1,0 +1,2 @@
+FROM docker.intuit.com/oicp/standard/maven/amzn-maven-corretto8:1.0.0
+COPY .m2 /root/.m2

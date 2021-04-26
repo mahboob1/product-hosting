@@ -1,0 +1,214 @@
+// The library version is controled from the Jenkins configuration
+// To force a version add after lib '@' followed by the version.
+@Library('msaas-shared-lib') _
+
+node {
+    // setup the global static configuration
+    config = setupMsaasPipeline('msaas-config.yaml')
+    
+}
+
+
+pipeline {
+
+    agent {
+        kubernetes {
+            label "${config.pod_label}"
+            yamlFile 'KubernetesPods.yaml'
+        }
+    }
+
+    post {
+        always {
+            sendMetrics(config)
+        }
+        fixed {
+            emailext (
+                subject: "Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' ${currentBuild.result}",
+                body: """
+                        Job Status for '${env.JOB_NAME} [${env.BUILD_NUMBER}]': ${currentBuild.result}\n\nCheck console output at ${env.BUILD_URL}
+                """,
+                to: "some_email@intuit.com"
+            )
+        }
+        unsuccessful {
+            emailext (
+                subject: "Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' ${currentBuild.result}",
+                body: """
+                        Job Status for '${env.JOB_NAME} [${env.BUILD_NUMBER}]': ${currentBuild.result}\n\nCheck console output at ${env.BUILD_URL}
+                """,
+                to: "some_email@intuit.com"
+            )
+        }
+    }
+
+    stages {
+        stage('BUILD:') {
+            when { anyOf { branch 'master'; changeRequest() } }
+            stages {
+                stage('Docker Multi Stage Build') {
+                    steps {
+                        container('docker') {
+                            cocoonInit(config)
+                            // '--rm=false' is to not auto-delete intermediate contains so we can later do 'docker cp'
+                            // '--build-arg=\"build=${BUILD_URL}\"' is to tag that intermediate container for same reason.
+                            sh label: "docker build", script: "docker build --rm=false --build-arg=\"build=${env.BUILD_URL}\" -t ${config.image_full_name} ."
+
+                            // copy from container the results of the build so we have all the reports.
+                            // this is where Maven puts the results, for other builds change the path to copy.
+                            sh label: "docker cp from build container to outputs", script: "docker cp \$(docker ps -l -a -q -f \"label=image=build\" -f \"label=build=${env.BUILD_URL}\" -f \"status=exited\"):/usr/src/app/target /var/run/outputs"
+                        }
+                            sh script: "cp -R /var/run/outputs \${WORKSPACE}/target"
+                    }
+                }
+                stage('Code Scans') {
+                    parallel {
+                        stage('Code Analysis') {
+                            when { expression {return config.SonarQubeAnalysis} }
+                            steps {
+                                container('docker') {
+
+                                    // copy from container bundle for sonar analysis
+                                    sh label: "docker cp from build container to outputs", script: "docker cp \$(docker ps -l -a -q -f \"label=image=build\" -f \"label=build=${env.BUILD_URL}\" -f \"status=exited\"):/usr/src /var/run/outputs/bundle"
+                                    sh script: "cp -R /var/run/outputs/bundle \${WORKSPACE}/bundle"
+                                    sh label: "docker build", script: "docker build -f Dockerfile.sonar --build-arg=\"sonar=${config.SonarQubeEnforce}\" ."
+                                }
+                            }
+                        }
+
+                        stage('checkmarx') {
+                            steps {
+                                checkmarx(config)
+                            }
+                        }
+                        stage('Nexus IQ Server Scan') {
+                            steps {
+                            nexusPolicyEvaluation failBuildOnNetworkError: false, iqApplication: "${config.asset_id}", iqStage: "build"
+                            }
+                        }
+                    }
+                }
+                stage('Publish') {
+                    parallel {
+                        stage('Cocoon Publish') {
+                            when { expression {return config.enableCocoon} }
+                            steps {
+                                container('docker') {
+                                    cocoonPush(config)
+                                }
+                            }
+                        }
+                        stage('Report Coverage & Unit Test Results') {
+                            steps {
+                                junit '**/surefire-reports/**/*.xml'
+                                jacoco()
+                                codeCov(config)
+                            }
+                        }
+                        stage('CPD Certification & Publish') {
+                            steps {
+                                container('cpd') {
+                                    cpd(config, "--buildargs DOCKER_TAGS=${config.git_tag}")
+                                }
+                            }
+                        }
+                    }
+                }
+                // jira transitioning
+                stage('Transition Jira Tickets') {
+                    steps {
+                        script {
+                            if (env.BRANCH_NAME != 'master' && changeRequest()) {
+                                transitionJiraTickets(config, "Ready for Review")
+                            } else if (env.BRANCH_NAME == 'master') {
+                                transitionJiraTickets(config, "Closed")
+                            }
+                        }
+                    }
+                }
+                stage('Scorecard Check') {
+                    when { expression {return config.enableScorecardReadinessCheck} }
+                    steps {
+                        scorecardPreprodReadiness(config, "e2e-usw2")
+                    }
+                }
+            }
+        }
+        stage('qal-usw2') {
+            when { 
+                beforeOptions true
+                allOf { branch 'master'; not {changeRequest()} } 
+            }
+            options {
+                lock(resource: getEnv(config, 'qal-usw2').namespace, inversePrecedence: true)
+                timeout(time: 22, unit: 'MINUTES')
+            }
+            stages {
+                stage('Deploy') {
+                    steps {
+                        container('cdtools') {
+                            //This has to be the first action in the first sub-stage.
+                            milestone(ordinal: 30, label: "Deploy-qal-usw2-milestone")
+                            gitOpsDeploy(config, "qal-usw2", config.image_full_name)
+                        }
+                    }
+                }
+                stage('Test') {
+                    steps {
+                        sh "echo run test command goes here"
+                        //container('test') {
+                            //overwatchTests("qal-usw2", "qal", config)
+                        //}
+                    }
+                }
+                stage('Transition Jira Tickets') {
+                    when { expression {return config.enableJiraTransition} }
+                    steps {
+                        transitionJiraTickets(config, "Deployed to PreProd")
+                    }
+                }
+            }
+        }
+        stage('e2e-usw2') {
+            when { 
+                beforeOptions true
+                allOf { branch 'master'; not {changeRequest()} } 
+            }
+            options {
+                lock(resource: getEnv(config, 'e2e-usw2').namespace, inversePrecedence: true)
+                timeout(time: 22, unit: 'MINUTES')
+            }
+            stages {
+                stage('Scorecard Check') {
+                    when { expression {return config.enableScorecardReadinessCheck} }
+                    steps {
+                        scorecardPreprodReadiness(config, "e2e")
+                    }
+                }
+                stage('Deploy') {
+                    steps {
+                        container('cdtools') {
+                            //This has to be the first action in the first sub-stage.
+                            milestone(ordinal: 40, label: "Deploy-e2e-usw2-milestone")
+                            gitOpsDeploy(config, "e2e-usw2", config.image_full_name)
+                        }
+                    }
+                }
+                stage('Test') {
+                    steps {
+                        sh "echo run test command goes here"
+                        //container('test') {
+                            //overwatchTests("e2e-usw2", "e2e", config)
+                        //}
+                    }
+                }
+                stage('Transition Jira Tickets') {
+                    when { expression {return config.enableJiraTransition} }
+                    steps {
+                        transitionJiraTickets(config, "Deployed to PreProd")
+                    }
+                }
+            }
+        }
+    }
+}

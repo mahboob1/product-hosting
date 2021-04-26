@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+   <pluginGroups>
+      <pluginGroup>org.sonarsource.scanner.maven</pluginGroup>
+   </pluginGroups>
+   <profiles>
+   <profile>
+      <id>sonar</id>
+      <activation>
+         <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+         <sonar.host.url>https://sonarqube.tools-k8s.a.intuit.com</sonar.host.url>
+         <sonar.projectName>msaas-${project.artifactId}</sonar.projectName>
+         <sonar.tests>./src/test</sonar.tests>
+         <sonar.junit.reportsPath>./target/surefire-reports</sonar.junit.reportsPath>
+         <sonar.surefire.reportsPath>./target/surefire-reports</sonar.surefire.reportsPath>
+         <sonar.jacoco.reportPath>./target/test-results/coverage/jacoco/jacoco.exec</sonar.jacoco.reportPath>
+         <sonar.binaries>./app/target/classes/</sonar.binaries>
+         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+      </properties>
+   </profile>
+   </profiles>
+   <interactiveMode>false</interactiveMode>
+   <mirrors>
+      <mirror>
+         <id>nexus</id>
+         <mirrorOf>*</mirrorOf>
+         <url>http://nexus.intuit.net/nexus/content/groups/public</url>
+      </mirror>
+   </mirrors>
+</settings>

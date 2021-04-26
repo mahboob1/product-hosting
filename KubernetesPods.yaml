@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: billingcomm-billing-qbes-hosting-service-template-v2
+spec:
+  containers:
+  - name: jnlp
+    image: docker.intuit.com/dev/build/ibp/jnlp-slave-with-docker:3.36-2_master_85
+    tty: true
+    args: [ "$(JENKINS_SECRET)", "$(JENKINS_AGENT_NAME)", "-url", "$(JENKINS_URL)" ]
+    volumeMounts:
+    - name: shared-build-output
+      mountPath: /var/run/outputs
+  - name: docker
+    image: docker.intuit.com/docker:18.09.1
+    tty: true
+    command: [ "cat" ]
+    volumeMounts:
+    - name: dind-volume
+      mountPath: /var/run/docker.sock
+    - name: shared-build-output
+      mountPath: /var/run/outputs
+  - name: cpd
+    image: docker.intuit.com/oicp/standard/cpd:0.4
+    tty: true
+    command: [ "cat" ]
+    alwaysPullImage: true
+    volumeMounts:
+    - name: dind-volume
+      mountPath: /var/run/docker.sock
+  - name: cdtools
+    image: docker.intuit.com/dev/deploy/cd/argocd-utils:stable
+    tty: true 
+    command: [ "cat" ]
+    alwaysPullImage: true
+  - name: servicenow
+    image: docker.intuit.com/dev/patterns/servicenow-agent/service/servicenow-agent:master-89-5785e2b
+    tty: true
+    command: [ "cat" ]
+    alwaysPullImage: true
+  - name: test
+    image: docker.artifactory.a.intuit.com/oicp/standard/external/maven:3.5.3-jdk-8
+    tty: true
+    command: [ "cat" ]
+    alwaysPullImage: true
+    volumeMounts:
+    - name: shared-build-output
+      mountPath: /var/run/outputs
+  volumes:
+  - name: dind-volume
+    hostPath:
+      path: /var/run/dind/docker.sock
+  - name: shared-build-output
+    emptyDir: {}

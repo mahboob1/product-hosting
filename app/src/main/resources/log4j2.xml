@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="error" strict="true" name="loggingConfig" monitorInterval="30">
+<Properties>
+    <Property name="logDir">${sys:LOGFILE_BASEPATH}/logs</Property>
+    <Property name="fileName">qbeshosting.log</Property>
+</Properties>
+<Appenders>
+    <RollingRandomAccessFile name="fileLogger"
+                             fileName="${logDir}/${fileName}" append="true"
+                             filePattern="${logDir}/$${date:yyyy-MM}/${fileName}-%d{MM-dd-yyyy}-%i.log.gz">
+        <PatternLayout>
+            <pattern>%d | level=%-5p | thread=%t | class=%c |%X{intuit_tidFormat}%X{intuit_transactionidFormat} %m%n</pattern>
+        </PatternLayout>
+        <Policies>
+            <TimeBasedTriggeringPolicy />
+            <SizeBasedTriggeringPolicy size="100 MB" />
+        </Policies>
+        <DefaultRolloverStrategy max="3" />
+    </RollingRandomAccessFile>
+    <Console name="console" target="SYSTEM_OUT">
+        <PatternLayout>
+            <pattern>%d | level=%-5p | thread=%t | class=%c |%X{intuit_tidFormat}%X{intuit_transactionidFormat} %m%n</pattern>
+        </PatternLayout>
+    </Console>
+</Appenders>
+<Loggers>
+    <AsyncLogger name="org.hibernate" level="error" additivity="false">
+        <AppenderRef ref="fileLogger" />
+    </AsyncLogger>
+    <AsyncRoot level="info" additivity="false">
+        <AppenderRef ref="fileLogger" />
+    </AsyncRoot>
+</Loggers>
+</Configuration>

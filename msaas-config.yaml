@@ -1,0 +1,99 @@
+l1: billingcomm
+l2: billing
+service_name: qbes-hosting
+asset_id: 2165123113335279749
+asset_alias: Intuit.billingcomm.billing.qbeshosting
+
+code_repo: github.intuit.com/billingcomm-billing/qbes-hosting.git
+deploy_repo: github.intuit.com/billingcomm-billing/qbes-hosting-deployment.git
+
+argocd_server: t4i.argocd.tools-k8s-prd.a.intuit.com:443
+argocd_password: argocd-qbes-hosting
+argocd_project: billingcomm-billing-qbes-hosting
+argocd_project_enabled: true
+registry: docker.artifactory.a.intuit.com
+repo: billingcomm/billing/qbes-hosting/service
+
+# change this to false once ready for PRD
+preprodOnly: false
+snow_application_name: "Worldwide Enterprise Business Services (WEBS)"
+
+# change this to true for enabling Jira stories to be transitioned
+enableJiraTransition: false
+# change this to true for enable Code Analysis stage
+SonarQubeAnalysis: false
+
+# change this to true for stop your pipeline in quality gate error
+SonarQubeEnforce: false
+
+# enable this to true once test suite has matured in confidence to help automate deployments
+enableScorecardReadinessCheck: false
+# to bypass the scorecard readiness check's fall back, gitOpsApproval, set this to true
+skipScorecardManualFallback: false
+
+# Cocoon
+enableCocoon: true
+cleanupCocoon: false
+cocoonBasic: dev/patterns/cocoon/service/basic
+
+environments:
+  qa1-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-qa1
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  qa2-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-qa2
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  qa3-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-qa3
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  ee2-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-ee2
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  ee3-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-ee3
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  ee6-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-ee6
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  pds-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-pds
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  pdr-usw2:
+    cluster: https://api-t4i-obill2-ppd-usw2-c-8iutvq-1593842772.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-ppd-pdr
+    region: usw2
+    iks_type: ppd
+    manifest_format: Kustomize
+  prd-usw2:
+    cluster: https://api-t4i-obill1-prod-usw2--va2qrc-1249499883.us-west-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-usw2-prd-prd
+    region: usw2
+    iks_type: prd
+    manifest_format: Kustomize
+  prd-use2:
+    cluster: https://api-t4i-obill1-prod-use2--1eiecp-56542212.us-east-2.elb.amazonaws.com
+    namespace: billingcomm-billing-qbes-hosting-use2-prd-prd
+    region: use2
+    iks_type: prd
+    manifest_format: Kustomize
